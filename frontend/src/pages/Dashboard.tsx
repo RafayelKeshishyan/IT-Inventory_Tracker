@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { fetchDashboard } from '../api';
 import { DashboardStats } from '../types';
 import StatCard from '../components/StatCard';
-import StatusBadge from '../components/StatusBadge';
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
