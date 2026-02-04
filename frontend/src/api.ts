@@ -1,6 +1,9 @@
 import { Item, ItemCreate, ItemUpdate, DashboardStats } from './types';
 
-const API_BASE = '/api';
+// Use environment variable for API base URL
+// In development: http://localhost:8000/api
+// In production (Vercel): /api (same domain)
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
