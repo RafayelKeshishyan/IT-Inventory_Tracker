@@ -3,7 +3,11 @@ import { Item, ItemCreate, ItemUpdate, DashboardStats } from './types';
 // Use environment variable for API base URL
 // In development: http://localhost:8000/api
 // In production (Vercel): /api (same domain)
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+// #region agent log
+const IS_PRODUCTION = typeof window !== 'undefined' && !window.location.hostname.includes('localhost');
+const API_BASE = import.meta.env.VITE_API_URL || (IS_PRODUCTION ? '/api' : 'http://localhost:8000/api');
+console.log('[DEBUG] API_BASE:', API_BASE, 'IS_PRODUCTION:', IS_PRODUCTION, 'VITE_API_URL:', import.meta.env.VITE_API_URL);
+// #endregion
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -14,7 +18,14 @@ async function handleResponse<T>(response: Response): Promise<T> {
 }
 
 export async function fetchDashboard(): Promise<DashboardStats> {
-  const response = await fetch(`${API_BASE}/dashboard`);
+  // #region agent log
+  const url = `${API_BASE}/dashboard`;
+  console.log('[DEBUG] fetchDashboard calling:', url);
+  // #endregion
+  const response = await fetch(url);
+  // #region agent log
+  console.log('[DEBUG] fetchDashboard response status:', response.status, response.statusText);
+  // #endregion
   return handleResponse(response);
 }
 
