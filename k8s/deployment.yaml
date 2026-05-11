@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-tracker-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory-tracker-api
+  template:
+    metadata:
+      labels:
+        app: inventory-tracker-api
+    spec:
+      containers:
+        - name: api
+          image: 070203626345.dkr.ecr.us-east-2.amazonaws.com/inventory-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
