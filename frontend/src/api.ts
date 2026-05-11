@@ -1,10 +1,11 @@
 import { Item, ItemCreate, ItemUpdate, DashboardStats } from './types';
 
-// Use environment variable for API base URL
-// In development: http://localhost:8000/api
-// In production (Vercel): /api (same domain)
-const IS_PRODUCTION = typeof window !== 'undefined' && !window.location.hostname.includes('localhost');
-const API_BASE = import.meta.env.VITE_API_URL || (IS_PRODUCTION ? '/api' : 'http://localhost:8000/api');
+// Base URL including the `/api` prefix (`/api/...` on FastAPI). Examples:
+// - Local `npm run dev`: omit VITE_API_URL → `/api` (Vite proxy → localhost:8000)
+// - Split backend prod: set VITE_API_URL at build time, e.g. https://api.example.com/api
+const API_BASE =
+  import.meta.env.VITE_API_URL?.trim() ||
+  '/api';
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
