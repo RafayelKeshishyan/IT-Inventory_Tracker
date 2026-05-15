@@ -3,23 +3,22 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# Use PostgreSQL in production (Vercel), SQLite in development
-DATABASE_URL = os.getenv(
-    "POSTGRES_URL",
-    "sqlite:///./inventory.db"
+DATABASE_URL = (
+    os.getenv("POSTGRES_URL")
+    or os.getenv("DATABASE_URL_UNPOOLED")
+    or os.getenv("DATABASE_URL")
+    or "sqlite:///./inventory.db"
 )
 
-# Handle Vercel Postgres URL format (needs to be modified for SQLAlchemy)
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# Configure engine based on database type
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(
-        DATABASE_URL, connect_args={"check_same_thread": False}
+        DATABASE_URL,
+        connect_args={"check_same_thread": False}
     )
 else:
-    # PostgreSQL configuration
     engine = create_engine(
         DATABASE_URL,
         pool_pre_ping=True,
