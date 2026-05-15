@@ -1,12 +1,13 @@
 import os
+from typing import Optional
 
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import Optional
 
 from .database import engine, get_db, Base
 from . import crud, schemas
+
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -14,20 +15,34 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="IT Inventory Tracker",
     description="Simple inventory management for IT equipment and spare parts",
-    version="1.0.0"
+    version="1.0.0",
 )
 
-_default_cors = ["http://localhost:5173", "http://localhost:3000"]
-_extra = os.getenv("CORS_ORIGINS", "").strip()
-_cors_list = [
-    *[o.strip() for o in _extra.split(",") if o.strip()],
-    *_default_cors,
+
+# CORS setup
+# CORS_ORIGINS can still be set in ECS as a comma-separated list.
+# The regex below also allows all Vercel production/preview URLs.
+default_cors_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://it-inventory-tracker.vercel.app",
+    "https://it-inventory-tracker-git-main-rafayelkeshishyan-7187s-projects.vercel.app",
 ]
-allow_origins = list(dict.fromkeys(_cors_list))
+
+extra_cors_origins = os.getenv("CORS_ORIGINS", "").strip()
+
+cors_origins = [
+    origin.strip()
+    for origin in extra_cors_origins.split(",")
+    if origin.strip()
+]
+
+allow_origins = list(dict.fromkeys(cors_origins + default_cors_origins))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -57,8 +72,13 @@ def list_items(
     db: Session = Depends(get_db),
 ):
     return crud.get_items(
-        db, skip=skip, limit=limit, search=search,
-        item_type=type, status=status, location=location
+        db,
+        skip=skip,
+        limit=limit,
+        search=search,
+        item_type=type,
+        status=status,
+        location=location,
     )
 
 
