@@ -53,6 +53,9 @@ app.add_middleware(
 def root():
     return {"message": "IT Inventory Tracker API", "version": "1.0.0"}
 
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
 
 # Dashboard endpoint
 @app.get("/api/dashboard", response_model=schemas.DashboardStats)
