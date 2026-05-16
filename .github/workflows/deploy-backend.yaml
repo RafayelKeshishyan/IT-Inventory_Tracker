@@ -69,3 +69,7 @@ jobs:
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
+
+      - name: Smoke test backend health
+        run: |
+          curl -f https://in-31b9193aea6e431e9cdfc54cbf0e44ff.ecs.us-east-2.on.aws/health
