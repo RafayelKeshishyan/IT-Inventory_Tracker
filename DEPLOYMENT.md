@@ -1,240 +1,504 @@
-# Deployment Guide - IT Inventory Tracker on Vercel
+# Deployment Guide — IT Inventory Tracker
 
-This guide will help you deploy your full-stack IT Inventory Tracker to Vercel with PostgreSQL.
+This document explains the production deployment setup for the IT Inventory Tracker project.
 
-## Prerequisites
+## Production Architecture
 
-- [Vercel Account](https://vercel.com/signup) (free)
-- [GitHub Account](https://github.com) (to connect your repo)
-- Git installed locally
-
-## Step 1: Push to GitHub
-
-1. **Initialize git (if not already done):**
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit - ready for Vercel deployment"
-   ```
-
-2. **Create a new repository on GitHub:**
-   - Go to https://github.com/new
-   - Name it: `inventory-tracker`
-   - Don't initialize with README (you already have one)
-   - Click "Create repository"
-
-3. **Push your code:**
-   ```bash
-   git remote add origin https://github.com/YOUR_USERNAME/inventory-tracker.git
-   git branch -M main
-   git push -u origin main
-   ```
-
-## Step 2: Set Up Vercel Postgres
-
-1. **Go to Vercel Dashboard:**
-   - Visit https://vercel.com/dashboard
-   - Click on "Storage" tab
-   - Click "Create Database"
-
-2. **Create PostgreSQL Database:**
-   - Select "Postgres"
-   - Choose a name: `inventory-tracker-db`
-   - Select region closest to you
-   - Click "Create"
-
-3. **Note your connection string:**
-   - After creation, click on your database
-   - Go to ".env.local" tab
-   - You'll see `POSTGRES_URL` - this will be automatically added to your project
-
-## Step 3: Deploy to Vercel
-
-1. **Import Project:**
-   - Go to https://vercel.com/new
-   - Click "Import Git Repository"
-   - Select your `inventory-tracker` repository
-   - Click "Import"
-
-2. **Configure Project:**
-   - **Framework Preset:** Vite
-   - **Root Directory:** `./` (leave as default)
-   - **Build Command:** `cd frontend && npm run build`
-   - **Output Directory:** `frontend/dist`
-   - **Install Command:** `npm install` (in root)
-
-3. **Environment Variables:**
-   Click "Environment Variables" and add:
-   
-   **For Production:**
-   - Key: `VITE_API_URL`
-   - Value: `/api`
-   - Environment: Production
-
-4. **Connect Database:**
-   - In the same deployment screen, scroll down to "Storage"
-   - Click "Connect Store"
-   - Select your `inventory-tracker-db` PostgreSQL database
-   - Click "Connect"
-   - This automatically adds `POSTGRES_URL` environment variable
-
-5. **Deploy:**
-   - Click "Deploy"
-   - Wait 2-3 minutes for deployment to complete
-
-## Step 4: Initialize Database
-
-After first deployment, you need to create the database tables:
-
-1. **Go to your Vercel project dashboard**
-2. **Click on "Storage" tab**
-3. **Click on your database**
-4. **Click "Query" tab**
-5. **Run this SQL to create tables:**
-
-```sql
-CREATE TABLE IF NOT EXISTS items (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    type VARCHAR(50) NOT NULL CHECK (type IN ('device', 'part')),
-    location VARCHAR(255),
-    status VARCHAR(50) NOT NULL CHECK (status IN ('available', 'in_use', 'broken', 'checked_out')),
-    quantity INTEGER DEFAULT 1,
-    low_stock_threshold INTEGER DEFAULT 5,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_items_type ON items(type);
-CREATE INDEX idx_items_status ON items(status);
-CREATE INDEX idx_items_location ON items(location);
+```txt
+Vercel Frontend
+    ↓
+AWS ECS Fargate Backend
+    ↓
+PostgreSQL Database
 ```
 
-6. **Optional: Add sample data**
+The backend is containerized with Docker, stored in Amazon ECR, and deployed to AWS ECS Fargate. The frontend is deployed on Vercel and calls the backend through an HTTPS API.
 
-You can run the seed data by creating a one-time script, or manually add items through your UI after deployment.
+## Live Services
 
-## Step 5: Test Your Deployment
+### Frontend
 
-1. **Visit your deployed URL** (e.g., `https://inventory-tracker.vercel.app`)
-2. **Test the dashboard** - should load with 0 items
-3. **Add a test item** - click "Add Item" button
-4. **Verify CRUD operations:**
-   - Create an item ✓
-   - Edit the item ✓
-   - Delete the item ✓
-   - Search/filter ✓
-
-## Local Development Setup
-
-To continue developing locally:
-
-1. **Install dependencies:**
-   ```bash
-   # Backend
-   cd backend
-   pip install -r requirements.txt
-   
-   # Frontend
-   cd ../frontend
-   npm install
-   ```
-
-2. **Create `.env` file in frontend folder:**
-   ```bash
-   cd frontend
-   echo "VITE_API_URL=http://localhost:8000/api" > .env
-   ```
-
-3. **Run locally (2 terminals):**
-   
-   **Terminal 1 - Backend:**
-   ```bash
-   cd backend
-   uvicorn app.main:app --reload
-   ```
-   
-   **Terminal 2 - Frontend:**
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-
-4. **Visit:** http://localhost:5173
-
-## Troubleshooting
-
-### Issue: API calls failing with CORS errors
-**Solution:** Check that `VITE_API_URL` is set correctly:
-- Local: `http://localhost:8000/api`
-- Production: `/api`
-
-### Issue: Database connection errors
-**Solution:** 
-- Verify `POSTGRES_URL` is set in Vercel environment variables
-- Check database is in the same region as your deployment
-- Verify tables are created (Step 4)
-
-### Issue: Build failing
-**Solution:**
-- Check build logs in Vercel dashboard
-- Make sure all dependencies are in `package.json` and `requirements.txt`
-- Verify Python version is compatible (Vercel uses Python 3.9+)
-
-### Issue: 404 errors on API routes
-**Solution:**
-- Verify `vercel.json` routes are correct
-- Check `api/index.py` exists
-- Redeploy project
-
-## Continuous Deployment
-
-Once set up, Vercel automatically:
-- ✅ Deploys on every push to `main` branch
-- ✅ Creates preview deployments for pull requests
-- ✅ Provides automatic HTTPS
-- ✅ Global CDN for fast loading
-
-## Updating Your Deployment
-
-To push updates:
-
-```bash
-git add .
-git commit -m "Your update message"
-git push
+```txt
+https://it-inventory-tracker.vercel.app
 ```
 
-Vercel will automatically rebuild and deploy!
+### Backend API
 
-## Environment Variables Reference
+```txt
+https://in-31b9193aea6e431e9cdfc54cbf0e44ff.ecs.us-east-2.on.aws
+```
 
-| Variable | Local Value | Production Value | Purpose |
-|----------|-------------|------------------|---------|
-| `VITE_API_URL` | `http://localhost:8000/api` | `/api` | Frontend API endpoint |
-| `POSTGRES_URL` | (SQLite) | Auto-set by Vercel | Database connection |
+### Important API Endpoints
 
-## Cost
+```txt
+GET /health
+GET /api/dashboard
+GET /api/items
+GET /api/locations
+POST /api/items
+PUT /api/items/{id}
+DELETE /api/items/{id}
+```
 
-✅ **Everything is FREE on Vercel:**
-- Unlimited deployments
-- Vercel Postgres free tier: 256MB storage, 60 compute hours/month
-- Perfect for portfolio projects and demos
+Example:
 
-## Next Steps
+```txt
+https://in-31b9193aea6e431e9cdfc54cbf0e44ff.ecs.us-east-2.on.aws/api/items
+```
 
-1. ✅ Add custom domain (optional): Project Settings → Domains
-2. ✅ Monitor usage: Dashboard → Analytics
-3. ✅ Set up staging environment: Create a `develop` branch
-4. ✅ Add environment protection: Project Settings → Environment Variables
+## Tech Stack
 
----
+### Frontend
 
-## Questions or Issues?
+```txt
+React
+TypeScript
+Vite
+Tailwind CSS
+Vercel
+```
 
-- Vercel Docs: https://vercel.com/docs
-- Vercel Postgres: https://vercel.com/docs/storage/vercel-postgres
-- FastAPI on Vercel: https://vercel.com/docs/functions/runtimes/python
+### Backend
 
-Your app is now live! 🚀
+```txt
+FastAPI
+Python
+SQLAlchemy
+Docker
+AWS ECS Fargate
+Amazon ECR
+```
+
+### Database
+
+```txt
+PostgreSQL
+```
+
+### CI/CD
+
+```txt
+GitHub Actions
+AWS IAM OIDC Role
+Amazon ECR
+AWS ECS Fargate
+```
+
+## Deployment Flow
+
+```txt
+Push to main
+    ↓
+GitHub Actions starts
+    ↓
+Docker image is built from backend/Dockerfile
+    ↓
+Image is pushed to Amazon ECR
+    ↓
+ECS task definition is updated with the new image
+    ↓
+ECS Fargate service is redeployed
+    ↓
+Health check confirms backend is running
+```
+
+## GitHub Actions CI/CD
+
+The workflow file is located at:
+
+```txt
+.github/workflows/deploy-backend.yaml
+```
+
+It runs when changes are pushed to:
+
+```txt
+backend/**
+.github/workflows/deploy-backend.yaml
+```
+
+The workflow performs these steps:
+
+```txt
+1. Checks out the repository code
+2. Authenticates to AWS using GitHub OIDC
+3. Logs into Amazon ECR
+4. Builds the backend Docker image
+5. Pushes the Docker image to ECR using the Git commit SHA as the image tag
+6. Downloads the current ECS task definition
+7. Updates the task definition with the new image
+8. Deploys the updated task definition to ECS
+9. Waits for the ECS service to become stable
+```
+
+This avoids manually building, tagging, pushing, and updating ECS through the AWS Console.
+
+## AWS Resources
+
+### Region
+
+```txt
+us-east-2
+```
+
+### ECR Repository
+
+```txt
+inventory-backend
+```
+
+### ECS Cluster
+
+```txt
+default
+```
+
+### ECS Service
+
+```txt
+inventory-backend-service
+```
+
+### ECS Task Definition Family
+
+```txt
+default-inventory-backend-service
+```
+
+### ECS Container Name
+
+```txt
+Main
+```
+
+### Container Port
+
+```txt
+8000
+```
+
+### Health Check Path
+
+```txt
+/health
+```
+
+## Environment Variables
+
+### Vercel Frontend Environment Variable
+
+```txt
+VITE_API_URL=https://in-31b9193aea6e431e9cdfc54cbf0e44ff.ecs.us-east-2.on.aws/api
+```
+
+Important: the value includes `/api` because the frontend code calls paths like:
+
+```txt
+${VITE_API_URL}/items
+${VITE_API_URL}/dashboard
+```
+
+### ECS Backend Environment Variables
+
+```txt
+POSTGRES_URL=<PostgreSQL connection string>
+CORS_ORIGINS=https://it-inventory-tracker.vercel.app,http://localhost:5173,http://localhost:3000
+```
+
+Do not commit `POSTGRES_URL` to GitHub. It contains database credentials.
+
+## CORS
+
+The backend allows the Vercel frontend to call the API.
+
+The backend supports:
+
+```txt
+https://it-inventory-tracker.vercel.app
+Vercel preview URLs ending in .vercel.app
+Local development URLs
+```
+
+This prevents browser CORS errors when the Vercel frontend calls the ECS backend.
+
+## Health Check
+
+The backend has a dedicated health endpoint:
+
+```txt
+GET /health
+```
+
+Expected response:
+
+```json
+{
+  "status": "healthy"
+}
+```
+
+ECS uses this endpoint to confirm the backend container is healthy after deployment.
+
+## PostgreSQL Database
+
+The backend uses PostgreSQL when `POSTGRES_URL` is provided.
+
+If `POSTGRES_URL` is missing, the backend may fall back to SQLite locally. In production, `POSTGRES_URL` must be set in ECS.
+
+To check whether data exists, open:
+
+```txt
+https://in-31b9193aea6e431e9cdfc54cbf0e44ff.ecs.us-east-2.on.aws/api/items
+```
+
+If it returns an empty list:
+
+```json
+[]
+```
+
+then the backend is working, but the database is empty or not seeded.
+
+## Seeding Demo Data
+
+The project includes a seed script for demo inventory data.
+
+Run from the `backend` folder:
+
+```powershell
+$env:POSTGRES_URL="your_postgres_connection_string"
+python -m app.seed_data
+```
+
+Do not paste the real connection string into GitHub.
+
+After seeding, test:
+
+```txt
+https://in-31b9193aea6e431e9cdfc54cbf0e44ff.ecs.us-east-2.on.aws/api/items
+```
+
+You should see inventory items returned as JSON.
+
+## Local Development
+
+### Backend
+
+```powershell
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+Backend runs on:
+
+```txt
+http://localhost:8000
+```
+
+### Frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend runs on:
+
+```txt
+http://localhost:5173
+```
+
+For local frontend development, use:
+
+```txt
+VITE_API_URL=http://localhost:8000/api
+```
+
+## Manual Backend Docker Deploy
+
+Normally, GitHub Actions handles deployment automatically.
+
+If manual deployment is needed:
+
+```powershell
+cd backend
+docker build -t inventory-backend:manual .
+aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 070203626345.dkr.ecr.us-east-2.amazonaws.com
+docker tag inventory-backend:manual 070203626345.dkr.ecr.us-east-2.amazonaws.com/inventory-backend:manual
+docker push 070203626345.dkr.ecr.us-east-2.amazonaws.com/inventory-backend:manual
+```
+
+Then update the ECS service image URI to:
+
+```txt
+070203626345.dkr.ecr.us-east-2.amazonaws.com/inventory-backend:manual
+```
+
+## Smoke Test Script
+
+The project includes a smoke test script:
+
+```txt
+scripts/smoke-test.ps1
+```
+
+Run it from the project root (defaults to the production ECS URL):
+
+```powershell
+.\scripts\smoke-test.ps1
+```
+
+Against local Docker:
+
+```powershell
+.\scripts\smoke-test.ps1 -ApiBase "http://localhost:8000"
+```
+
+The script checks:
+
+```txt
+/health
+/api/items
+```
+
+This confirms the backend is reachable and the API is responding.
+
+## GitHub Actions Secret
+
+The GitHub Actions workflow uses this repository secret:
+
+```txt
+AWS_ROLE_TO_ASSUME
+```
+
+Example value:
+
+```txt
+arn:aws:iam::070203626345:role/GitHubActionsECSDeployRole
+```
+
+This role is assumed through GitHub OIDC. No long-lived AWS access keys are stored in GitHub.
+
+## Common Troubleshooting
+
+### CORS error in browser
+
+Check that ECS has:
+
+```txt
+CORS_ORIGINS=https://it-inventory-tracker.vercel.app,http://localhost:5173,http://localhost:3000
+```
+
+Also confirm the backend code allows Vercel preview URLs.
+
+### Frontend cannot fetch backend
+
+Check Vercel:
+
+```txt
+VITE_API_URL=https://in-31b9193aea6e431e9cdfc54cbf0e44ff.ecs.us-east-2.on.aws/api
+```
+
+Make sure it is exactly `VITE_API_URL`, not `Vite_API_URL`.
+
+### ECS deployment rolls back
+
+Check:
+
+```txt
+ECS Service → Events
+ECS Service → Tasks → Stopped tasks
+CloudWatch logs
+```
+
+Common causes:
+
+```txt
+Bad image
+Wrong port
+Bad health check path
+Missing environment variable
+Database connection issue
+```
+
+### API returns empty data
+
+Open:
+
+```txt
+/api/items
+```
+
+If it returns:
+
+```json
+[]
+```
+
+then the API works, but PostgreSQL probably has no seeded data.
+
+Run:
+
+```powershell
+python -m app.seed_data
+```
+
+with `POSTGRES_URL` set.
+
+### GitHub Actions cannot assume role
+
+Check the GitHub secret:
+
+```txt
+AWS_ROLE_TO_ASSUME
+```
+
+It must be the IAM role ARN, not the ECR repository ARN.
+
+Correct format:
+
+```txt
+arn:aws:iam::070203626345:role/GitHubActionsECSDeployRole
+```
+
+## Interview Summary
+
+This project demonstrates:
+
+```txt
+Full-stack deployment
+Docker containerization
+AWS ECS Fargate
+Amazon ECR
+PostgreSQL integration
+Vercel frontend deployment
+CORS configuration
+Health checks
+GitHub Actions CI/CD
+AWS IAM OIDC authentication
+Smoke testing with PowerShell
+```
+
+A concise interview explanation:
+
+```txt
+I deployed the frontend on Vercel and containerized the FastAPI backend with Docker. The backend image is stored in Amazon ECR and runs on ECS Fargate. The backend connects to PostgreSQL through an ECS environment variable. I also set up GitHub Actions with AWS OIDC so every backend push to main automatically builds a new Docker image, pushes it to ECR, updates the ECS task definition, and redeploys the ECS service. I added a /health endpoint and a smoke-test script to verify the deployment.
+```
+
+## Kubernetes Note
+
+This project is deployed with ECS Fargate for simplicity and cost control.
+
+A Kubernetes version would use:
+
+```txt
+Deployment → to run backend pods
+Service → to expose backend pods internally
+Ingress or LoadBalancer → to expose the API publicly
+Secrets → for POSTGRES_URL
+ConfigMap → for non-sensitive configuration
+```
+
+ECS was chosen for the live deployment because it provides managed container hosting without the cost and operational overhead of running EKS.
