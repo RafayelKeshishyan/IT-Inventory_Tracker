@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - "backend/**"
-      - ".github/workflows/deploy-backend.yaml"
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -37,6 +37,24 @@ jobs:
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Ensure ECS service is active
+        run: |
+          STATUS=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query "services[0].status" \
+            --output text)
+          DESIRED=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query "services[0].desiredCount" \
+            --output text)
+          echo "ECS service status: $STATUS (desiredCount=$DESIRED)"
+          if [ "$STATUS" != "ACTIVE" ]; then
+            echo "::error::ECS service '$ECS_SERVICE' is $STATUS. In AWS Console: ECS → Clusters → $ECS_CLUSTER → Services → set desired count to 1 and wait until ACTIVE, then re-run this workflow."
+            exit 1
+          fi
 
       - name: Build and push Docker image
         id: build-image
@@ -71,6 +89,5 @@ jobs:
           wait-for-service-stability: true
 
       - name: Smoke test backend health
-        run: |
-          # Task public IP can change after redeploy; update when ECS networking changes.
-          curl -f http://52.14.187.149:8000/health
+        if: ${{ secrets.BACKEND_HEALTH_URL != '' }}
+        run: curl -f "${{ secrets.BACKEND_HEALTH_URL }}"

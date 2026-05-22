@@ -385,6 +385,40 @@ This role is assumed through GitHub OIDC. No long-lived AWS access keys are stor
 
 ## Common Troubleshooting
 
+### GitHub Actions: "Service is INACTIVE"
+
+The deploy workflow fails if the ECS service is stopped or scaled to 0.
+
+In **AWS Console → ECS → Clusters → default → inventory-backend-service**:
+
+1. Set **Desired tasks** to `1`
+2. Wait until **Status** is `ACTIVE` and a task is **RUNNING**
+3. Re-run the workflow (Actions → Deploy Backend to ECS → Run workflow)
+
+Workflow file-only changes no longer trigger a deploy (only `backend/**` pushes do).
+
+### Direct ECS (no load balancer) — cheap setup
+
+Without an ALB you save ~$16+/month. Requirements:
+
+| Item | Setting |
+|------|---------|
+| Task networking | `assignPublicIp: ENABLED` in a **public subnet** |
+| Security group | Inbound **TCP 8000** from `0.0.0.0/0` (or restrict later) |
+| Service | `desiredCount: 1`, status **ACTIVE** |
+| Public IP | Changes when the task restarts — check **Tasks → Networking** |
+
+**Browser rule:** HTTPS Vercel cannot call `http://task-ip:8000` (mixed content). Use either:
+
+- **Vercel `/api`** (serverless `api/index.py` + Postgres) — works without ECS, lowest ops cost
+- **HTTPS** in front of ECS later (ALB + ACM, or CloudFront) if the browser must hit ECS directly
+
+Optional GitHub secret for smoke test after you have a stable health URL:
+
+```txt
+BACKEND_HEALTH_URL=http://<task-public-ip>:8000/health
+```
+
 ### CORS error in browser
 
 Check that ECS has:
