@@ -1,5 +1,5 @@
 param(
-    [string]$ApiBase = "https://in-31b9193aea6e431e9cdfc54cbf0e44ff.ecs.us-east-2.on.aws"
+    [string]$ApiBase = "http://52.14.187.149:8000"
 )
 
 $ErrorActionPreference = "Stop"

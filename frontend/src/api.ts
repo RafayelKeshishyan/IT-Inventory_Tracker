@@ -2,10 +2,21 @@ import { Item, ItemCreate, ItemUpdate, DashboardStats } from './types';
 
 // Base URL including the `/api` prefix (`/api/...` on FastAPI). Examples:
 // - Local `npm run dev`: omit VITE_API_URL → `/api` (Vite proxy → localhost:8000)
-// - Split backend prod: set VITE_API_URL at build time, e.g. https://api.example.com/api
-const API_BASE =
-  import.meta.env.VITE_API_URL?.trim() ||
-  '/api';
+// - Vercel + ECS: omit VITE_API_URL → `/api` (vercel.json rewrites to ECS over HTTPS)
+// - Direct HTTPS API: set VITE_API_URL, e.g. https://api.example.com/api
+function normalizeApiBase(raw: string | undefined): string {
+  const base = raw?.trim() || '/api';
+  if (base === '/api' || base.startsWith('/api/')) {
+    return '/api';
+  }
+  const withoutTrailingSlash = base.replace(/\/+$/, '');
+  if (withoutTrailingSlash.endsWith('/api')) {
+    return withoutTrailingSlash;
+  }
+  return `${withoutTrailingSlash}/api`;
+}
+
+const API_BASE = normalizeApiBase(import.meta.env.VITE_API_URL);
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {

@@ -25,8 +25,10 @@ https://it-inventory-tracker.vercel.app
 ### Backend API
 
 ```txt
-https://in-31b9193aea6e431e9cdfc54cbf0e44ff.ecs.us-east-2.on.aws
+http://52.14.187.149:8000
 ```
+
+The browser should call `/api` on the Vercel site (HTTPS proxy), not the raw task IP.
 
 ### Important API Endpoints
 
@@ -43,7 +45,7 @@ DELETE /api/items/{id}
 Example:
 
 ```txt
-https://in-31b9193aea6e431e9cdfc54cbf0e44ff.ecs.us-east-2.on.aws/api/items
+https://it-inventory-tracker.vercel.app/api/items
 ```
 
 ## Tech Stack
@@ -188,7 +190,7 @@ Main
 ### Vercel Frontend Environment Variable
 
 ```txt
-VITE_API_URL=https://in-31b9193aea6e431e9cdfc54cbf0e44ff.ecs.us-east-2.on.aws/api
+# Unset VITE_API_URL, or set VITE_API_URL=/api (see vercel.json ECS proxy)
 ```
 
 Important: the value includes `/api` because the frontend code calls paths like:
@@ -248,7 +250,7 @@ If `POSTGRES_URL` is missing, the backend may fall back to SQLite locally. In pr
 To check whether data exists, open:
 
 ```txt
-https://in-31b9193aea6e431e9cdfc54cbf0e44ff.ecs.us-east-2.on.aws/api/items
+https://it-inventory-tracker.vercel.app/api/items
 ```
 
 If it returns an empty list:
@@ -275,7 +277,7 @@ Do not paste the real connection string into GitHub.
 After seeding, test:
 
 ```txt
-https://in-31b9193aea6e431e9cdfc54cbf0e44ff.ecs.us-east-2.on.aws/api/items
+https://it-inventory-tracker.vercel.app/api/items
 ```
 
 You should see inventory items returned as JSON.
@@ -393,15 +395,29 @@ CORS_ORIGINS=https://it-inventory-tracker.vercel.app,http://localhost:5173,http:
 
 Also confirm the backend code allows Vercel preview URLs.
 
-### Frontend cannot fetch backend
+### Frontend shows "Failed to fetch" on Vercel
 
-Check Vercel:
+Common causes after removing the load balancer:
+
+1. **Mixed content** — The Vercel site is HTTPS. Browsers block `http://task-ip:8000` from the page. Fix: leave `VITE_API_URL` unset (or set `/api`) and proxy through Vercel (`vercel.json` rewrites to ECS).
+
+2. **Missing `/api` in `VITE_API_URL`** — FastAPI routes live under `/api/...`. If you set a direct API host, use `http://IP:8000/api`, not `http://IP:8000`.
+
+3. **Dead ECS Service Connect DNS** — URLs like `https://….ecs.us-east-2.on.aws` stop resolving when that endpoint is removed. Use the task public IP or a new HTTPS hostname.
+
+Check Vercel → Project → Settings → Environment Variables:
 
 ```txt
-VITE_API_URL=https://in-31b9193aea6e431e9cdfc54cbf0e44ff.ecs.us-east-2.on.aws/api
+# Recommended (proxy via vercel.json):
+(delete VITE_API_URL or set to /api)
+
+# Only if you have a public HTTPS API:
+VITE_API_URL=https://your-api-host.example.com/api
 ```
 
-Make sure it is exactly `VITE_API_URL`, not `Vite_API_URL`.
+After changing env vars, **redeploy** the frontend (Vite bakes env at build time).
+
+Make sure the variable name is exactly `VITE_API_URL`, not `Vite_API_URL`.
 
 ### ECS deployment rolls back
 
